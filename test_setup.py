@@ -78,9 +78,23 @@ def get_answer(key, value, query):
     attention_scores = torch.stack(attention_scores, dim=0)
     return attention_scores
 
+def check_answer(key, value, query, answer):
+    key = key.to(torch.float32)
+    value = value.to(torch.float32)
+    query = query.to(torch.float32)
+    sdpa_answer = F.scaled_dot_product_attention(query, key, value, enable_gqa=True)
+
+    if not torch.allclose(answer, sdpa_answer, atol=1e-4):
+        print(f"FAIL: answers do not match")
+        return False
+    
+    print("PASS")
+    return True
+
 device = "cuda" if torch.cuda.is_available() else "cpu"
 data = create_data(head_dim=128, num_kv_heads=8, num_query_heads=32, batch_size=64, seq_len=4096, page_size=16, device=device)
 attention_scores = get_answer(data["key"], data["value"], data["query"])
+check_answer(data["key"], data["value"], data["query"], attention_scores)
 
 
     
