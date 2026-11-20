@@ -1,6 +1,8 @@
 import torch
 import torch.nn.functional as F
 import math
+import statistics
+import time
 
 
 def move_tokens_to_piles(page_list, pile, tensor, pages_per_seq, page_size, seq_len, batch_size, num_kv_heads, head_dim):
@@ -91,10 +93,31 @@ def check_answer(key, value, query, answer):
     print("PASS")
     return True
 
+def sync():
+    if torch.cuda.is_available():
+        torch.cuda.synchronize()
+
+def time_kernel(fn):
+    for _ in range(10):
+        fn()
+
+    total = []
+    for _ in range(100):
+        sync()
+        start = time.perf_counter()
+        fn()
+        sync()
+        end = time.perf_counter()
+        total.append((end - start) * 1000)
+
+    return statistics.median(total)
+
 device = "cuda" if torch.cuda.is_available() else "cpu"
 data = create_data(head_dim=128, num_kv_heads=8, num_query_heads=32, batch_size=64, seq_len=4096, page_size=16, device=device)
 attention_scores = get_answer(data["key"], data["value"], data["query"])
 check_answer(data["key"], data["value"], data["query"], attention_scores)
+ms = time_kernel(lambda: get_answer(data["key"], data["value"], data["query"]))
+print(f"{ms} ms")
 
 
     
