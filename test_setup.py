@@ -101,13 +101,11 @@ def time_kernel(fn):
     for _ in range(10):
         fn()
     
-    cuda = False
     if torch.cuda.is_available():
-        cuda = True
         throw_away_tensor = torch.empty(256 * 1024 * 1024, dtype=torch.uint8, device="cuda")
     total = []
     for _ in range(100):
-        if cuda:
+        if torch.cuda.is_available():
             throw_away_tensor.zero_()
         sync()
         start = time.perf_counter()
