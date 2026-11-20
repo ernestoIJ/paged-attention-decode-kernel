@@ -100,9 +100,15 @@ def sync():
 def time_kernel(fn):
     for _ in range(10):
         fn()
-
+    
+    cuda = False
+    if torch.cuda.is_available():
+        cuda = True
+        throw_away_tensor = torch.empty(256 * 1024 * 1024, dtype=torch.uint8, device="cuda")
     total = []
     for _ in range(100):
+        if cuda:
+            throw_away_tensor.zero_()
         sync()
         start = time.perf_counter()
         fn()
@@ -112,12 +118,11 @@ def time_kernel(fn):
 
     return statistics.median(total)
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-data = create_data(head_dim=128, num_kv_heads=8, num_query_heads=32, batch_size=64, seq_len=4096, page_size=16, device=device)
-attention_scores = get_answer(data["key"], data["value"], data["query"])
-check_answer(data["key"], data["value"], data["query"], attention_scores)
-ms = time_kernel(lambda: get_answer(data["key"], data["value"], data["query"]))
-print(f"{ms} ms")
-
-
-    
+if __name__ == "__main__":
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    data = create_data(head_dim=128, num_kv_heads=8, num_query_heads=32, batch_size=64, seq_len=4096, page_size=16, device=device)
+    check_piles(data)
+    attention_scores = get_answer(data["key"], data["value"], data["query"])
+    check_answer(data["key"], data["value"], data["query"], attention_scores)
+    ms = time_kernel(lambda: get_answer(data["key"], data["value"], data["query"]))
+    print(f"{ms} ms")
